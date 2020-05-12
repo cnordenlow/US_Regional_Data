@@ -6,6 +6,8 @@ https://cnordenlow.shinyapps.io/us_regional_data/
 
 #### Data Sources:
 *US Department of Labor
+
 *US Bureau of Labor Statistics
+
 *US Bureau of Economic Analysis
 
