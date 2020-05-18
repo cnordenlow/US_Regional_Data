@@ -23,7 +23,8 @@ require(httpcache)
 library(shinydashboard)
 library(shinyWidgets)
 library(readxl)
-#data arbetslöshet
+library(gapminder)
+#data arbetslÃ¶shet
 ##https://www.bls.gov/web/laus/ststdsadata.txt
 
 #gdp.. halvtaskig sida
@@ -34,13 +35,13 @@ library(readxl)
 #Source: US Bureau of Economic Analysis
 
 ##
-####Beräkning arbetslöshet blir konstigt. se över. Nu rätt? Se över om man ska köra säsongsrensat eller inte.
+####BerÃ¤kning arbetslÃ¶shet blir konstigt. se Ã¶ver. Nu rÃ¤tt? Se Ã¶ver om man ska kÃ¶ra sÃ¤songsrensat eller inte.
 ###
 
 ####### IMPORT DATA
 
 ###https://www.bls.gov/web/laus.supp.toc.htm
-##Obs jag kollar på säsongsjusterade siffror för arbetslöshet.
+##Obs jag kollar pÃ¥ sÃ¤songsjusterade siffror fÃ¶r arbetslÃ¶shet.
 #https://www.bls.gov/opub/ted/2020/employment-up-in-21-metro-areas-unchanged-in-367-from-march-2019-to-march-2020.htm
 
 url_jobless_claims="https://oui.doleta.gov/unemploy/csv/ar539.csv"
@@ -70,7 +71,7 @@ data_pop<-read_csv(url(url_population), col_names =  c("state_short", "year", "p
 
 
 ##Functions
-######### funktion för att ta ut right
+######### funktion fÃ¶r att ta ut right
 right = function(text, num_char) {
   substr(text, nchar(text) - (num_char-1), nchar(text))
 }
@@ -81,7 +82,7 @@ left = function(text, num_char) {
 
 
 
-#behöver lägga till 2020 om det saknas. sen 2021 etc.
+#behÃ¶ver lÃ¤gga till 2020 om det saknas. sen 2021 etc.
 #
 data_pop_2020 <- data_pop %>%
   filter(year == 2019) %>%
@@ -227,7 +228,8 @@ temp_data <- data_employment%>%
  # mutate(year = year(rptdate))%>%
   mutate(state_short = "US")%>%
   mutate(state_long = "United States")%>%
-  mutate(state_group = "United States")
+  mutate(state_group = "United States")%>%
+  mutate(year = year(rptdate))
 
 
 data_employment <- merge(data_employment, temp_data, all = TRUE)
@@ -287,20 +289,20 @@ data_temp <- rbind(data_temp, data_temp_2020)
 data_temp <- data_temp%>%
   select(-rptdate)
 
-#detta tar bort då de som inte matchar. rätt eller fel? Tänk till här. bättre lägga en årlig befolkning då det inte går att matcha datumen då jobless claims ej är sista per månad. givet man inte fixar en hjälp rad.
+#detta tar bort dÃ¥ de som inte matchar. rÃ¤tt eller fel? TÃ¤nk till hÃ¤r. bÃ¤ttre lÃ¤gga en Ã¥rlig befolkning dÃ¥ det inte gÃ¥r att matcha datumen dÃ¥ jobless claims ej Ã¤r sista per mÃ¥nad. givet man inte fixar en hjÃ¤lp rad.
 data_jobless_claims2<-merge(x = data_jobless_claims2, y = data_temp, by.x = c("state_short", "year"), by.y = c("state_short", "year"))
 #data_jobless_claims2 <- arrange(data_jobless_claims2, rptdate)
 
 #lyft in population till data_jobbless_claims med faktor state och year som composite
 
 data_jobless_claims2<-merge(x = data_jobless_claims2, y = data_pop, by = c("state_short", "year"), all.x = TRUE)
-#saknas årtal så tar den föregående
+#saknas Ã¥rtal sÃ¥ tar den fÃ¶regÃ¥ende
 
 #tar bort alla rader med NA
 data_jobless_claims2 <- na.omit(data_jobless_claims2)
 
 
-#beräkna relativt befolkning
+#berÃ¤kna relativt befolkning
 data_jobless_claims2 <- data_jobless_claims2%>%
   mutate(initial_claims_relative_pop = round(jobless_claims / civ_population*100,2))%>%
   mutate(continuing_claims_relative_pop = round(continuing_claims / civ_population*100,2))
@@ -331,7 +333,8 @@ temp_data <- data_jobless_claims2%>%
   mutate(year = year(rptdate))%>%
   mutate(state_short = "US")%>%
   mutate(state_long = "United States")%>%
-  mutate(state_group = "United States")
+  mutate(state_group = "United States")%>%
+  mutate(year = year(rptdate))
 
 
 data_jobless_claims2 <- merge(data_jobless_claims2, temp_data, all = TRUE)
@@ -344,7 +347,7 @@ data_jobless_claims3 <- data_jobless_claims3 %>%
   mutate(country = ifelse(state_short == "US",1,0))
 
 
-###försök få ner datan
+###fÃ¶rsÃ¶k fÃ¥ ner datan
 #n_days_before = 30
 data_jobless_claims2 <- data_jobless_claims2 %>%
   filter(rptdate >"2020-01-01")%>%
@@ -368,13 +371,13 @@ data_jobless_claims2 <- data_jobless_claims2 %>%
 
 
 
-############################GDP
+############################Labor market and GSP
 
 
 
 
 
-##############Denna laddar in från en stökig excelfil
+##############Denna laddar in frÃ¥n en stÃ¶kig excelfil
 #Import GDP-data
 
 #url_data_gdp <- ("https://www.bea.gov/system/files/2020-04/qgdpstate0420.xlsx")
@@ -409,14 +412,14 @@ table_gdp_1_change <- table_gdp_1_change%>%
   select(-grep("Rank", names(table_gdp_1_change)))
 
 
-# kör gather. ej första kolumnen men övriga.
+# kÃ¶r gather. ej fÃ¶rsta kolumnen men Ã¶vriga.
 table_gdp_1_change <- table_gdp_1_change %>%
   gather("date", "gdp_qoq", c(-1))
 
 #merge with state short name
 table_gdp_1_change<-merge(x = table_gdp_1_change, y = us_states, by.x = "state_long", by.y = "state_long", all.x = TRUE)
 table_gdp_1_change <- na.omit(table_gdp_1_change)
-###ovanstående klart, ej datum.
+###ovanstÃ¥ende klart, ej datum.
 
 
 
@@ -488,7 +491,7 @@ table_gdp_3_percent_of_us <- na.omit(table_gdp_3_percent_of_us)
 #merge with state short name
 colnames(table_gdp_3_percent_of_us)[1] <- 'state_long'
 
-#Blir ovan rätt?
+#Blir ovan rÃ¤tt?
 
 #gather
 table_gdp_3_percent_of_us <- table_gdp_3_percent_of_us %>%
@@ -513,7 +516,7 @@ table_gdp_3_percent_of_us <- table_gdp_3_percent_of_us%>%
 
 table_gdp_3_percent_of_us$rptdate <- as.Date(table_gdp_3_percent_of_us$rptdate)
 
-##lägg 0 till us as country
+##lÃ¤gg 0 till us as country
 table_gdp_3_percent_of_us <- table_gdp_3_percent_of_us%>%
   mutate(gdp_share = ifelse(state_long =="United States", 0, gdp_share))
 
@@ -525,7 +528,7 @@ temp_table <- table_gdp_3_percent_of_us %>%
 table_gdp_1_change<-merge(x = table_gdp_1_change, y = temp_table, by.x = c("state_long", "rptdate"), by.y = c("state_long", "rptdate"), all.x = TRUE)
 table_gdp_1_change <- arrange(table_gdp_1_change, rptdate)
 
-#detta behövs för att ha alla datum kvar för graf
+#detta behÃ¶vs fÃ¶r att ha alla datum kvar fÃ¶r graf
 table_gdp_1_change2 <- table_gdp_1_change
 
 
@@ -621,15 +624,16 @@ joint_table<-merge(x = joint_table, y = temp_table, by.x = c("state_long"), by.y
 
 
 
-
-
+#html
+#https://www.w3schools.com/html/html_formatting.asp
 
 
 #https://stackoverflow.com/questions/48210709/show-content-for-menuitem-when-menusubitems-exist-in-shiny-dashboard
 
 
 ui <- dashboardPage(skin = "black",
-                    dashboardHeader(title = "US Regional Data"),
+                    dashboardHeader(title = "US Regional Data",tags$li(class = "dropdown", actionButton(inputId='show', label="Learn More", icon = icon("th")))),
+                  #  tags$li(class = "dropdown", actionButton("home", "Home")))
                     
                     
                     dashboardSidebar(
@@ -639,46 +643,52 @@ ui <- dashboardPage(skin = "black",
                                   
                                   
                                   menuItem("Jobless Claims", tabName = "claims", icon = icon("check-circle", lib = "font-awesome")),
-                                  conditionalPanel("input.sidebarmenu === 'claims'",
-                                                   radioButtons("type", "Select Data",
-                                                                c("Initial Jobless Claims" = "initial_claims",
-                                                                  "Continuing Claims" = "continuing_claims")),
+                                  conditionalPanel("input.sidebarmenu === 'claims'"
+                                         #          radioButtons("type", "Select Data",
+                                          #                      c("Initial Jobless Claims" = "initial_claims",
+                                           #                       "Continuing Claims" = "continuing_claims")),
                                                #    radioButtons("when", "Select Data",
                                                 #                c("Latest" = "latest",
                                                  #                 "1m change" = "1m_chg",
                                                 #                  "3m change" = "3m_chg",
                                                  #                 "6m change" = "6m_chg")),
-                                                   sliderTextInput("range_us", "Select Mapping Date", 
-                                                                  choices = as.Date(data_jobless_claims2$rptdate),
-                                                                   selected = as.Date(max(data_jobless_claims2$rptdate)))
+                                                 #  sliderTextInput("range_us", "Select Mapping Date", 
+                                                  #                choices = as.Date(data_jobless_claims2$rptdate),
+                                                   #                selected = as.Date(max(data_jobless_claims2$rptdate)),
+                                                    #               animate =
+                                                     #               animationOptions(interval = 15, loop = FALSE))  
                                   ),
                                   
                                   
                                   menuItem("Labor Market", tabName = "labor_market", icon = icon("check-circle", lib = "font-awesome")),
                                   
-                                  conditionalPanel("input.sidebarmenu === 'labor_market'",
-                                                   radioButtons("labor_type", "Select Data",
-                                                                c("Unemployment" = "unemployment",
-                                                                  "Participation Rate" = "participation",
-                                                                  "Employed-to-Population Ratio" = "employed_ratio")),
-                                                   
-                                                   sliderTextInput("range_labor", "Select Mapping Date", 
-                                                                   choices = as.Date(data_employment$rptdate),
-                                                                   selected = as.Date(max(data_employment$rptdate)))
+                                  conditionalPanel("input.sidebarmenu === 'labor_market'"
+                                              #     radioButtons("labor_type", "Select Data",
+                                               #                 c("Unemployment" = "unemployment",
+                                                #                  "Participation Rate" = "participation",
+                                                 #                 "Employed-to-Population Ratio" = "employed_ratio")),
+                                                #   
+                                                 #  sliderTextInput("range_labor", "Select Mapping Date", 
+                                                  #                 choices = as.Date(data_employment$rptdate),
+                                                   #                selected = as.Date(max(data_employment$rptdate)),
+                                                    #               animate =
+                                                     #                animationOptions(interval = 10, loop = FALSE))
                                   ),
                                   
                                                    
                                   menuItem("GDP", tabName = "gdp", icon = icon("check-circle", lib = "font-awesome")),
                                                    
-                                          conditionalPanel("input.sidebarmenu === 'gdp'",
-                                                             radioButtons("gdp_type", "Select GDP input",
-                                                                          c("GDP QoQ" = "gdp_qoq",
-                                                                            "GDP YoY" = "gdp_yoy",
-                                                                           "GDP Share of Economy" = "gdp_share")),
-                                                                    
-                                          sliderTextInput("range_gdp", "Select Mapping Date", 
-                                          choices = as.Date(table_gdp_1_change$rptdate),
-                                           selected = as.Date(max(table_gdp_1_change$rptdate)))                                                
+                                          conditionalPanel("input.sidebarmenu === 'gdp'"
+#                                                             radioButtons("gdp_type", "Select GDP input",
+ #                                                                         c("GDP QoQ" = "gdp_qoq",
+  #                                                                          "GDP YoY" = "gdp_yoy",
+   #                                                                        "GDP Share of Economy" = "gdp_share")),
+    #                                                                
+     #                                     sliderTextInput("range_gdp", "Select Mapping Date", 
+      #                                    choices = as.Date(table_gdp_1_change$rptdate),
+       #                                    selected = as.Date(max(table_gdp_1_change$rptdate)),
+        #                                  animate =
+         #                                   animationOptions(interval = 15, loop = FALSE))                                       
                                                    
                                   )
                       )
@@ -693,11 +703,15 @@ ui <- dashboardPage(skin = "black",
                           tabName = "dashboard", class='active',
                           fluidRow(
                             
-                            box(title="Summary US. Data based on release date of regional data. There may be a later print on aggregate level.",
-                                
+                            
+                            
+                           # box(title="Summary US. Data based on release date of regional data. There may be a later print on aggregate level.",
+                           box(title="This page aims to give a deeper knowledge of US Regional Economy.",
+                               
                                 status="primary", solidHeader = TRUE,width=12,
+                               
                                 
-                            #nedan styr hö
+                            #nedan styr hÃ¶
                             tags$head(tags$style(HTML(".small-box {height: 120px}"))),
                             valueBoxOutput(outputId = "dash_initial"),
                             
@@ -711,7 +725,11 @@ ui <- dashboardPage(skin = "black",
                             valueBoxOutput("dash_employed_to_pop_rate"),
                             valueBoxOutput("dash_gdp_qoq"),
                             valueBoxOutput("dash_gdp_yoy")),
+
+                          #  actionButton(inputId='show', label="Learn More", icon = icon("th"))),
+
                             
+
 
                             box(title="Regional Dashboard - Plot latest available regional data",
                                 status="primary", solidHeader = TRUE,width=12,
@@ -742,11 +760,13 @@ ui <- dashboardPage(skin = "black",
                                 
                                 
                                 
-                                plotlyOutput(outputId = "scatter_all"), height=500, width=12)),
+                                plotlyOutput(outputId = "scatter_all"), height=500, width=12))
                             
-                            #  valueBoxOutput("sessionBox"),
-                           # valueBoxOutput("goalBox"),
-                           # valueBoxOutput("goalCRBox")
+
+
+                            #  box(title="Dynamic Flow",
+                            #status="primary",solidHeader = TRUE,plotlyOutput(outputId = "flow"), height=500, width=12)
+  
                           )),
                         
                         
@@ -758,16 +778,25 @@ ui <- dashboardPage(skin = "black",
                             shinydashboard::valueBoxOutput("initial"),
                             shinydashboard::valueBoxOutput("continuing"),
                             
-                          #  box(collapsible = TRUE,
-                           # radioButtons("type", "Select Data",
-                           #              c("jobless_claims" = "initial_claims",
-                           #                "continuing_claims" = "continuing_claims"))),
-                          #  box(collapsible = TRUE,
-                           # sliderTextInput("range_us", "Select Mapping Date", 
-                            #                choices = as.Date(data_jobless_claims2$rptdate),
-                             #               selected = as.Date(max(data_jobless_claims2$rptdate)))),
+
                             
-                            
+                          box(title="Select input parameters",
+                              status="primary", solidHeader = TRUE,width=12,
+                              
+                              box(#collapsible = TRUE,
+                                radioButtons("type", "Select Data",
+                                             c("Initial Jobless Claims" = "initial_claims",
+                                               "Continuing Claims" = "continuing_claims")),width=6),
+                                box(#collapsible = TRUE,
+
+                                sliderTextInput("range_us", "Select Mapping Date", 
+                                                choices = as.Date(data_jobless_claims2$rptdate),
+                                                selected = as.Date(last(data_jobless_claims2$rptdate)),
+                                                animate =
+                                                  animationOptions(interval = 15, loop = FALSE)),width=6)), 
+                                
+                                
+                          
                             box(title="Initial Jobless Claims and Continuing Claims in percent of civ population",
                                 status="primary",solidHeader = TRUE,plotlyOutput(outputId = "map_us"), height=500, width=12),
                             
@@ -783,15 +812,22 @@ ui <- dashboardPage(skin = "black",
                             valueBoxOutput("participation"),
                             valueBoxOutput("employed_to_pop_rate"),
                             
-                           #   box(collapsible = TRUE,
-                          #        radioButtons("labor_type", "Select Data",
-                           #                 c("Unemployment" = "unemployment",
-                            #                  "Participation Rate" = "participation"))),
-                              
-                          #    box(collapsible = TRUE,
-                           #    sliderTextInput("range_labor", "Select Mapping Date", 
-                            #                  choices = as.Date(data_employment$rptdate),
-                             #                selected = as.Date(max(data_employment$rptdate)))),
+                            
+                            box(title="Select input parameters",
+                                status="primary", solidHeader = TRUE,width=12,
+                                
+                                box(#collapsible = TRUE,
+                                  radioButtons("labor_type", "Select Data",
+                                               c("Unemployment" = "unemployment",
+                                                 "Participation Rate" = "participation",
+                                                 "Employed-to-Population Ratio" = "employed_ratio")),width=6),
+                                box(#collapsible = TRUE,
+                                  
+                                  sliderTextInput("range_labor", "Select Mapping Date", 
+                                                  choices = as.Date(data_employment$rptdate),
+                                                  selected = as.Date(last(data_employment$rptdate)),
+                                                  animate =
+                                                    animationOptions(interval = 3, loop = FALSE)),width=6)), 
                             
                             box(title="US Labor Market",
                                 status="primary",solidHeader = TRUE,plotlyOutput(outputId = "map_labor_market"), height=500, width=12),
@@ -803,7 +839,31 @@ ui <- dashboardPage(skin = "black",
                           tabName = "gdp", 
                           fluidRow(
                             
+                            valueBoxOutput("gdp_qoq"),
+                            valueBoxOutput("gdp_yoy"),
+                            
+                            box(title="Select input parameters",
+                                status="primary", solidHeader = TRUE,width=12,
+                                
+                                box(#collapsible = TRUE,
+                                  radioButtons("gdp_type", "Select GDP input",
+                                               c("GDP QoQ" = "gdp_qoq",
+                                                 "GDP YoY" = "gdp_yoy",
+                                                 "GDP Share of Economy" = "gdp_share")),width=6),
+                                box(#collapsible = TRUE,
+                                  
+                                  sliderTextInput("range_gdp", "Select Mapping Date", 
+                                                  choices = as.Date(table_gdp_1_change$rptdate),
+                                                  selected = as.Date(last(table_gdp_1_change$rptdate)),
+                                                  animate =
+                                                    animationOptions(interval = 15, loop = FALSE)) ,width=6)), 
           # 
+
+          
+
+          
+          
+          
                           box(title= "US GDP",
                                 status="primary",solidHeader = TRUE,plotlyOutput(outputId = "map_gdp"), height=500, width=12),
                             box(title="US GDP",
@@ -863,8 +923,10 @@ server <- shinyServer(
       dataset <- datasetInput()
       
       claims_diff <- dataset$initial_claims_relative_pop
-      title_ = paste("US Initial Jobless Claims in percentage of population",'<br>', as.Date(max(dataset$rptdate)))
-      
+     # title_ = paste("US Initial Jobless Claims in percentage of population",'<br>', as.Date(max(dataset$rptdate)))
+      min_legend <- min(data_jobless_claims3$initial_claims_relative_pop)
+      max_legend <- max(data_jobless_claims3$initial_claims_relative_pop)
+      title_ =  as.Date(max(dataset$rptdate))
       #claims_diff <- dataset$initial_claims / dataset$pop
       if (input$type == "initial_claims"){
         claims_diff <- dataset$initial_claims_relative_pop
@@ -898,7 +960,7 @@ server <- shinyServer(
       
       else if (input$type == "continuing_claims"){
               claims_diff <- dataset$continuing_claims_relative_pop
-              title_ = as.Date(max(dataset$rptdate))-7
+              title_ =  as.Date(max(dataset$rptdate))-7
         
      #   if (input$when == "latest") {
     #      claims_diff <- dataset$continuing_claims_relative_pop
@@ -923,7 +985,8 @@ server <- shinyServer(
         
         dataset$hover <- with(dataset, paste(state_long, '<br>', "Date", rptdate, "Continuing Claims", continuing_claims, "<br>"))
         text_hover <- with(dataset, paste(state_long, '<br>', "Continuing Claims:", continuing_claims, "<br>","Continuing Claims / Pop:", continuing_claims_relative_pop))
-
+        min_legend <- min(data_jobless_claims3$continuing_claims_relative_pop)
+        max_legend <- max(data_jobless_claims3$continuing_claims_relative_pop)
         
     } 
       
@@ -931,7 +994,7 @@ server <- shinyServer(
       
       
    
-      
+
       
       plot_ly(
         dataset,
@@ -942,6 +1005,8 @@ server <- shinyServer(
         type="choropleth",
         locationmode="USA-states",
         colors = 'Purples',
+zmin=min_legend,
+zmax=max_legend,
         # autocolorscale=FALSE, zmin=0, zmax=100,
         filename="stackoverflow/simple-choropleth"
       ) %>%
@@ -967,13 +1032,13 @@ server <- shinyServer(
       
       dataset <- datasetInput()
       
-  
+
+      
+     # title_ <- as.Date(input$range_us)
       
       fig <- plot_ly(data = dataset, x = ~continuing_claims_relative_pop, y = ~initial_claims_relative_pop, color = ~state_group, symbol = ~state_group,
                      colors = 'Purple',
-                #     marker = list(size = ifelse(data_jobless_claims3$state_short == "US", 15, 5),
-                 #                  colors = ifelse(data_jobless_claims3$state_short == "US", "Red","Purple")),
-                                        
+                                  
                      text = ~paste(state_long,'<br>',"Initial Claims: ", initial_claims_relative_pop, '<br>Continuing Claims:', continuing_claims_relative_pop))%>%
         layout(
                xaxis = list(title = "Continuing Claims", range=c(0, max(data_jobless_claims3$continuing_claims_relative_pop))),
@@ -1002,17 +1067,22 @@ server <- shinyServer(
       
       dataset2 <- datasetInput_2()
       labor <- data_employment$unemployment
-      
+      min_legend <- min(data_employment2$unemployment)
+      max_legend <- max(data_employment2$unemployment)
       if (input$labor_type == "unemployment"){
         labor <- dataset2$unemployment
         title_ = "Unemployment per state"
         text_hover <- with(dataset2, paste(state_long, '<br>', "Date", rptdate, "Unemployment", unemployment, "<br>"))
+        min_legend <- min(data_employment2$unemployment)
+        max_legend <- max(data_employment2$unemployment)
         
       }
       else if (input$labor_type == "participation"){
         labor <- dataset2$participation_rate
         title_ = "Participation Rate per state"
         text_hover <- with(dataset2, paste(state_long, '<br>', "Date", rptdate, "Participation Rate", participation_rate, "<br>"))
+        min_legend <- min(data_employment2$participation_rate)
+        max_legend <- max(data_employment2$participation_rate)
       }
       
     
@@ -1020,11 +1090,13 @@ server <- shinyServer(
       labor <- dataset2$employed_to_pop_rate
       title_ = "Employed-to-Population Ratio per state"
       text_hover <- with(dataset2, paste(state_long, '<br>', "Date", rptdate, "Employed-to-Population Ratio", employed_to_pop_rate, "<br>"))
+      min_legend <- min(data_employment2$employed_to_pop_rate)
+      max_legend <- max(data_employment2$employed_to_pop_rate)
     }
       
       
       
-     
+      title_ <- as.Date(input$range_labor)
       
       #title_ <- as.Date(input$range_labor)
       
@@ -1037,6 +1109,8 @@ server <- shinyServer(
         type="choropleth",
         locationmode="USA-states",
         colors = 'Purples',
+zmin=min_legend,
+zmax=max_legend,
         # autocolorscale=FALSE, zmin=0, zmax=100,
         filename="stackoverflow/simple-choropleth2"
       ) %>%
@@ -1095,25 +1169,34 @@ server <- shinyServer(
       
       dataset3 <- datasetInput_3()
       value <- table_gdp_1_change$gdp_qoq
+      min_legend <- min(table_gdp_1_change$gdp_qoq)
+      max_legend <- max(table_gdp_1_change$gdp_qoq)
       
       if (input$gdp_type == "gdp_qoq"){
         value <- dataset3$gdp_qoq
         title_ = "GDP QoQ"
         text_hover <- with(dataset3, paste(state_long, '<br>', "Date", rptdate, "GDP QoQ", gdp_qoq, "<br>"))
+        min_legend <- min(table_gdp_1_change$gdp_qoq)
+        max_legend <- max(table_gdp_1_change$gdp_qoq)
       }
+      
       else if (input$gdp_type == "gdp_yoy"){
         value <- dataset3$gdp_yoy
         title_ = "GDP  YoY"
         text_hover <- with(dataset3, paste(state_long, '<br>', "Date", rptdate, "GDP YoY", gdp_yoy, "<br>"))
+        min_legend <- min(table_gdp_1_change$gdp_yoy)
+        max_legend <- max(table_gdp_1_change$gdp_yoy)
       }
       
       else if (input$gdp_type == "gdp_share"){
         value <- dataset3$gdp_share
         title_ = "GDP Share of Economy"
         text_hover <- with(dataset3, paste(state_long, '<br>', "Date", rptdate, "GDP share of Economy", gdp_share, "<br>"))
+        min_legend <- min(table_gdp_1_change$gdp_share)
+        max_legend <- max(table_gdp_1_change$gdp_share)
       }
       
-     
+      title_ <- as.Date(input$range_gdp)
       
      # title_ <- as.Date(input$range_labor)
       
@@ -1127,6 +1210,8 @@ server <- shinyServer(
          type="choropleth",
         locationmode="USA-states",
         colors = 'Purples',
+       zmin=min_legend,
+       zmax=max_legend,
         # autocolorscale=FALSE, zmin=0, zmax=100,
         filename="stackoverflow/simple-choropleth2"
       ) %>%
@@ -1159,7 +1244,7 @@ server <- shinyServer(
         text_hover <- with(dataset3, paste(state_long,'<br>',"GDP YoY: ", gdp_yoy, '<br>GDP Share of Economy:', gdp_share))
       }
       
-      #behöver ha en ifall det blir gdp_share för den andra grafen.
+      #behÃ¶ver ha en ifall det blir gdp_share fÃ¶r den andra grafen.
       if (input$gdp_type == "gdp_share"){
         value <- dataset3$gdp_qoq
         title_ = "GDP QoQ"
@@ -1387,6 +1472,46 @@ server <- shinyServer(
     
     
     
+    #creating the valueBoxOutput content: GDP
+    output$gdp_qoq <- renderValueBox({
+      
+      
+      temp_data <- table_gdp_1_change%>%
+        filter(rptdate == (input$range_gdp))%>%
+        filter(state_short == "US")
+       # mutate(unemployed_population = as.numeric(gsub(",","",unemployed_population,fixed=TRUE)))%>%
+      #  mutate(participation = as.numeric(gsub(",","",participation,fixed=TRUE)))%>%
+  #      group_by(rptdate)%>%
+        #ummarise(country_unemployment = sum(unemployed_population)/sum(participation) * 100)
+      total <- paste(round(temp_data$gdp_qoq,1),"%", sep="")
+      
+      #valueBox("Initial Jobless Claims", total)
+      valueBox(
+        formatC(total, format="d", big.mark=',')
+        ,paste('GDP QoQ, ',input$range_gdp)
+        ,color = "light-blue")  
+    })
+    output$gdp_yoy <- renderValueBox({ 
+      
+      temp_data <- table_gdp_1_change%>%
+        filter(rptdate == (input$range_gdp))%>%
+        filter(state_short == "US")
+     #   mutate(civ_population = as.numeric(gsub(",","",civ_population,fixed=TRUE)))%>%
+      #  mutate(participation = as.numeric(gsub(",","",participation,fixed=TRUE)))%>%
+      #  group_by(rptdate)%>%
+       # summarise(country_participation = sum(participation)/sum(civ_population)*100)
+      
+      total <- paste(round(temp_data$gdp_yoy,1),"%", sep="")
+      
+      valueBox(
+        formatC(total, format="d", big.mark=',')
+        ,paste('GDP YoY, ', input$range_gdp)
+        ,color = "light-blue")   
+    })
+    
+    
+    
+    
     ###########
     ####Valuebox to dashboard
     ###########
@@ -1500,16 +1625,46 @@ server <- shinyServer(
         ,color = "light-blue")   
     })
     
-  #  valueBoxOutput("dash_employed_to_pop_rate"),
-   # valueBoxOutput("dash_unemployment"),
-   # valueBoxOutput("dash_participation"),
-    #valueBoxOutput("dash_gdp_qoq"),
-    #valueBoxOutput("dash_gdp_yoy"),
+
     
+    observeEvent(input$show, {
+      showModal(modalDialog(
+        title = "More information",
+        
+        HTML("Data based on release date of regional data. There may be a later print on aggregate level. <br><br>
+        <b>Initial Jobless Claims:</b> People filing to receive unenpmoyment insurance benefits for the first time. Reliable number. Moves close to general economy, good indicator. <br><br>
+        <b>Continuing Jobless Claims:</b> People who are continuing filing to receive unenpmoyment insurance. <br><br>
+        <b>Unemployment Rate:</b> The unemployment rate measured as the number of persons unemployed divided by the civilian labor force.<br><br>
+        <b>Participation Rate:</b> The participation rate refers to the total number of people or individuals who are currently employed or in search of a job.<br><br>
+        <b>Employment-to-population rate:</b> The employment-to-population ratio is equal to the number of persons employed divided by the working-age population.<br><br>
+        <b>Civilian Population:</b> In the United States, the civilian noninstitutional population refers to people 16 years of age and older residing in the 50 States and the District of Columbia who are not inmates of institutions (penal, mental facilities, homes for the aged), and who are not on active duty in the Armed Forces.<br><br>
+             
+         "
+        
+        ),
+        
+        easyClose = TRUE
+      ))
+    })
     
-    
-    
-    
+  
+    output$flow <- renderPlotly({
+      gg <- ggplot(data_employment, aes(participation_rate, unemployment, color = state_group)) +
+        geom_point(aes(size = unemployment, frame = year, ids = state_short))+
+        theme_classic()
+      
+      
+      ggplotly(gg)%>%
+        layout(legend = list(orientation = "h",xanchor = "center", x = 0.4, y = -0.2))%>%
+        hide_colorbar() %>%
+        plotly::config(displayModeBar = F)%>%
+        layout(annotations = 
+                 list(x = 1, y = -0.1, text = "Source: US Bureau of Labor Statistics", 
+                      showarrow = F, xref='paper', yref='paper', 
+                      xanchor='right', yanchor='auto', xshift=0, yshift=0,
+                      font=list(size=8, color="black")))
+      
+    })  
   })
 
 
