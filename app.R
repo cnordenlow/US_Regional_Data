@@ -49,7 +49,7 @@ url_state <- ("https://raw.githubusercontent.com/cnordenlow/static_data/master/u
 url_data <- ("https://www.bls.gov/web/laus/ststdsadata.txt")   #seasonally adjusted
 url_data2 <- ("https://www.bls.gov/web/laus/ststdnsadata.txt")  #not seasonally adjusted
 url_data_gdp <- ("https://www.bea.gov/system/files/2020-04/qgdpstate0420.xlsx")
-url_population ="https://raw.githubusercontent.com/JoshData/historical-state-population-csv/master/historical_state_population_by_year.csv"
+url_population ="https://raw.githubusercontent.com/JoshData/historical-state-population-csv/primary/historical_state_population_by_year.csv"
 
 
 us_states <-read_csv2(url(url_state))
