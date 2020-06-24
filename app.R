@@ -50,6 +50,9 @@ url_data <- ("https://www.bls.gov/web/laus/ststdsadata.txt")   #seasonally adjus
 url_data2 <- ("https://www.bls.gov/web/laus/ststdnsadata.txt")  #not seasonally adjusted
 url_data_gdp <- ("https://www.bea.gov/system/files/2020-04/qgdpstate0420.xlsx")
 url_population ="https://raw.githubusercontent.com/JoshData/historical-state-population-csv/primary/historical_state_population_by_year.csv"
+#url_population ="https://raw.githubusercontent.com/jakevdp/data-USstates/master/state-population.csv"
+
+
 
 
 us_states <-read_csv2(url(url_state))
@@ -62,8 +65,9 @@ get_data <- function(url) {
 }
 data_jobless_claims <- get_data(url_jobless_claims)
 data_pop<-read_csv(url(url_population), col_names =  c("state_short", "year", "pop"))
+#data_pop<-read_csv(url(url_population), skip=1,col_names =  c("state_short","ages", "year", "pop"))
 
-
+#data_pop <- data_pop[-c(1), ]
 
 #data_jobless_claims <- fread(url_jobless_claims)
 #url_jobless_claims="https://oui.doleta.gov/unemploy/csv/ar539.csv"
@@ -81,9 +85,11 @@ left = function(text, num_char) {
 
 
 
-
 #behÃ¶ver lÃ¤gga till 2020 om det saknas. sen 2021 etc.
 #
+#data_pop <- data_pop%>%
+#  select(-ages)
+
 data_pop_2020 <- data_pop %>%
   filter(year == 2019) %>%
   mutate(year = ifelse(year == 2019, 2020, 2020))
@@ -801,8 +807,13 @@ ui <- dashboardPage(skin = "black",
                                 status="primary",solidHeader = TRUE,plotlyOutput(outputId = "map_us"), height=500, width=12),
                             
                             box(title="Initial Jobless Claims and Continuing Claims in percent of civ population",
-                                status="primary",solidHeader = TRUE,plotlyOutput(outputId = "scatter_claims"), height=500, width=12))),
+                                status="primary",solidHeader = TRUE,plotlyOutput(outputId = "scatter_claims"), height=500, width=12),
                         
+
+###New 24 juni
+                            box(title="Initial Jobless Claims and Continuing Claims",
+                            status="primary",solidHeader = TRUE,plotlyOutput(outputId = "line_claims"), height=500, width=12))),
+
                         
                         tabItem(
                           tabName = "labor_market", 
@@ -832,8 +843,13 @@ ui <- dashboardPage(skin = "black",
                             box(title="US Labor Market",
                                 status="primary",solidHeader = TRUE,plotlyOutput(outputId = "map_labor_market"), height=500, width=12),
                             box(title="US Labor Market",
-                                status="primary",solidHeader = TRUE,plotlyOutput(outputId = "scatter_labor"), height=500, width=12))),
+                                status="primary",solidHeader = TRUE,plotlyOutput(outputId = "scatter_labor"), height=500, width=12),
                           
+#new 24 juni
+
+box(title="US Labor Market",
+    status="primary",solidHeader = TRUE,plotlyOutput(outputId = "line_labor"), height=500, width=12))),
+
                           
                         tabItem(
                           tabName = "gdp", 
@@ -1057,6 +1073,51 @@ zmax=max_legend,
       
     })
     
+    ###add a line graph for claims
+    output$line_claims <- renderPlotly({
+      
+      claims_line <- data_jobless_claims3 %>%
+        filter(country == 1)%>%
+        filter(rptdate > Sys.Date() - 365)%>%
+        mutate(
+          'Initial Jobess  Claims' = jobless_claims,
+          'Continuing Jobess  Claims' = continuing_claims,
+        )
+      
+      
+      claims_line <- claims_line%>%
+        select(rptdate, 'Initial Jobess  Claims' , 'Continuing Jobess  Claims', initial_claims_relative_pop, continuing_claims_relative_pop)%>%
+        gather(variable, value, 'Initial Jobess  Claims':'Continuing Jobess  Claims')
+      
+      
+      fig <- plot_ly(data = claims_line, x = ~rptdate, y = ~value, color = ~variable, symbol = ~variable,
+                     colors = 'Purple', type = 'scatter', mode = 'lines',
+                     
+                     text = ~paste('<br>',"Initial Claims: ", '<br>Continuing Claims:'))%>%
+        layout(
+         # title = "Initial Jobless Claims and Continuing Jobless Claims",
+          xaxis = list(title = "Date", gridcolor="grey"),
+          yaxis = list(title = "Claims",gridcolor="grey")
+          
+        )%>%
+        
+        # xaxis = list(title = "Continuing Claims", range=c(0, max(data_jobless_claims3$continuing_claims_relative_pop))),
+        #yaxis = list(title = "Initial Jobless Claims", range=c(0, max(data_jobless_claims3$initial_claims_relative_pop))))%>%
+        layout(legend = list(orientation = "h",xanchor = "center", x = 0.4, y = -0.2))%>%
+        hide_colorbar() %>%
+        plotly::config(displayModeBar = F)%>%
+        layout(annotations = 
+                 list(x = 1, y = -0.1, text = "Source: US Department of Labor", 
+                      showarrow = F, xref='paper', yref='paper', 
+                      xanchor='right', yanchor='auto', xshift=0, yshift=0,
+                      font=list(size=10, color="black")))
+      
+      
+      
+      
+      
+    })
+    
     ###
     ###
     ###
@@ -1157,6 +1218,52 @@ zmax=max_legend,
       
     })
 
+    
+    output$line_labor <- renderPlotly({
+      
+      
+    
+    df <- data_employment2 %>%
+      filter(state_long == "United States")%>%
+      filter(rptdate > Sys.Date() - 365)%>%
+      mutate(
+        Unemployment = unemployment,
+        "Participation Rate" = participation_rate,
+        "Employment-to-population"= employed_to_pop_rate
+      )
+    
+    
+    df <- df%>%
+      select(rptdate, Unemployment , "Participation Rate", "Employment-to-population")%>%
+      gather(variable, value, Unemployment:"Employment-to-population")
+    
+    
+    
+    fig <- plot_ly(data = df, x = ~rptdate, y = ~value, color = ~variable, symbol = ~variable,
+                   colors = 'Purple', type = 'scatter', mode = 'lines',
+                   
+                   text = ~paste('<br>',"Initial Claims: ", '<br>Continuing Claims:'))%>%
+      layout(
+        #title = "Employment",
+        xaxis = list(title = "Date", gridcolor="grey"),
+        yaxis = list(title = "Percent",gridcolor="grey")
+        
+      )%>%
+      
+      # xaxis = list(title = "Continuing Claims", range=c(0, max(data_jobless_claims3$continuing_claims_relative_pop))),
+      #yaxis = list(title = "Initial Jobless Claims", range=c(0, max(data_jobless_claims3$initial_claims_relative_pop))))%>%
+      layout(legend = list(orientation = "h",xanchor = "center", x = 0.4, y = -0.2))%>%
+      hide_colorbar() %>%
+      plotly::config(displayModeBar = F)%>%
+      layout(annotations = 
+               list(x = 1, y = -0.1, text = "Source: US Department of Labor", 
+                    showarrow = F, xref='paper', yref='paper', 
+                    xanchor='right', yanchor='auto', xshift=0, yshift=0,
+                    font=list(size=10, color="black")))
+    
+  })
+    
+    
     
     ####
     ####
