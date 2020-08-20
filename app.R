@@ -49,10 +49,14 @@ url_state <- ("https://raw.githubusercontent.com/cnordenlow/static_data/master/u
 url_data <- ("https://www.bls.gov/web/laus/ststdsadata.txt")   #seasonally adjusted
 url_data2 <- ("https://www.bls.gov/web/laus/ststdnsadata.txt")  #not seasonally adjusted
 url_data_gdp <- ("https://www.bea.gov/system/files/2020-04/qgdpstate0420.xlsx")
+#url_data_gdp <- ("https://www.bea.gov/sites/default/files/2020-07/qgdpstate0720_0_0.xlsx")
 url_population ="https://raw.githubusercontent.com/JoshData/historical-state-population-csv/primary/historical_state_population_by_year.csv"
 #url_population ="https://raw.githubusercontent.com/jakevdp/data-USstates/master/state-population.csv"
 
 
+##qoq data, not as many sheets or columns as yearly update.
+url_gdp_half <- ("https://www.bea.gov/sites/default/files/2020-07/qgdpstate0720_0_0.xlsx")
+download.file(url=url_gdp_half, destfile="localcopy2.xlsx", mode="wb")
 
 
 us_states <-read_csv2(url(url_state))
@@ -538,6 +542,155 @@ table_gdp_1_change <- arrange(table_gdp_1_change, rptdate)
 table_gdp_1_change2 <- table_gdp_1_change
 
 
+#######################New 20 aug. Needed to add QoQ new data. Add this on the yearly.
+
+##############Denna laddar in frÃ¥n en stÃ¶kig excelfil
+#Import GDP-data
+
+#url_data_gdp <- ("https://www.bea.gov/system/files/2020-04/qgdpstate0420.xlsx")
+#download.file(url=url_data_gdp, destfile="localcopy.xlsx", mode="wb")
+
+
+#table 1: Table 1. Percent Change in Real Gross Domestic Product (GDP) by State and state
+table_gdp_1_change_v2 <- read_excel('localcopy2.xlsx', sheet = 1, skip =4, col_names = FALSE)
+
+#import header
+data_gdp_header <- read_excel('localcopy2.xlsx', sheet = 1, skip =0, col_names = TRUE, range = cell_rows(c(2, 4)))
+
+#Basically, I transposed df, filled every column downward, then transposed it back to the original orientation
+data_gdp_header <- data.frame(t(data_gdp_header)) %>%
+  fill(., names(.)) %>%
+  t()
+
+new_names <- paste0(as.character(data_gdp_header[1,]), as.character(data_gdp_header[2,]))
+colnames(table_gdp_1_change_v2) <- new_names
+
+
+table_gdp_1_change_v2 <- na.omit(table_gdp_1_change_v2)
+
+#merge with state short name
+colnames(table_gdp_1_change_v2)[1] <- 'state_long'
+#
+#table_gdp_1_change <- na.omit(table_gdp_1_change)
+
+##############200421
+#ta bort kolumnen "rank"
+table_gdp_1_change_v2 <- table_gdp_1_change_v2%>%
+  select(-grep("Rank", names(table_gdp_1_change_v2)))
+
+
+# kÃ¶r gather. ej fÃ¶rsta kolumnen men Ã¶vriga.
+table_gdp_1_change_v2 <- table_gdp_1_change_v2 %>%
+  gather("date", "gdp_qoq", c(-1))
+
+#merge with state short name
+table_gdp_1_change_v2<-merge(x = table_gdp_1_change_v2, y = us_states, by.x = "state_long", by.y = "state_long", all.x = TRUE)
+table_gdp_1_change_v2 <- na.omit(table_gdp_1_change_v2)
+###ovanstÃ¥ende klart, ej datum.
+
+
+
+table_gdp_1_change_v2 <- table_gdp_1_change_v2%>%
+  mutate(rptdate = case_when(
+    right(table_gdp_1_change_v2$date, 1) == 1 ~ paste(left(table_gdp_1_change_v2$date,4),"03-31", sep="-"),
+    right(table_gdp_1_change_v2$date, 1) == 2 ~ paste(left(table_gdp_1_change_v2$date,4),"06-30", sep="-"),
+    right(table_gdp_1_change_v2$date, 1) == 3 ~ paste(left(table_gdp_1_change_v2$date,4),"09-30", sep="-"),
+    right(table_gdp_1_change_v2$date, 1) == 4 ~ paste(left(table_gdp_1_change_v2$date,4),"12-31", sep="-")
+  ))%>%
+  select(-date)
+
+table_gdp_1_change_v2$rptdate <- as.Date(table_gdp_1_change_v2$rptdate)
+
+
+
+#Import table 3
+#import part of percentage of us
+table_gdp_3_percent_of_us_v2 <- read_excel('localcopy2.xlsx', sheet = 4, skip =4, col_names = FALSE)
+
+#only select those as percent part of us
+table_gdp_3_percent_of_us_v2 <- table_gdp_3_percent_of_us_v2%>%
+  select(1, 7:11)
+
+#import header
+data_gdp_header <- read_excel('localcopy2.xlsx', sheet = 4, skip =1, col_names = TRUE, range = cell_rows(c(3,5)))
+data_gdp_header <- data_gdp_header%>%
+  select(1, 7:11)
+
+#Basically, I transposed df, filled every column downward, then transposed it back to the original orientation
+data_gdp_header <- data.frame(t(data_gdp_header)) %>%
+  fill(., names(.)) %>%
+  t()
+
+new_names <- paste0(as.character(data_gdp_header[1,]), as.character(data_gdp_header[2,]))
+colnames(table_gdp_3_percent_of_us_v2) <- new_names
+table_gdp_3_percent_of_us_v2 <- na.omit(table_gdp_3_percent_of_us_v2)
+
+#merge with state short name
+colnames(table_gdp_3_percent_of_us_v2)[1] <- 'state_long'
+
+#Blir ovan rÃ¤tt?
+
+#gather
+table_gdp_3_percent_of_us_v2 <- table_gdp_3_percent_of_us_v2 %>%
+  gather("date", "gdp_share", c(-1))
+
+table_gdp_3_percent_of_us_v2<-merge(x = table_gdp_3_percent_of_us_v2, y = us_states, by.x = "state_long", by.y = "state_long", all.x = TRUE)
+table_gdp_3_percent_of_us_v2 <- na.omit(table_gdp_3_percent_of_us_v2)
+
+
+###
+#Convert to dates
+###
+table_gdp_3_percent_of_us_v2 <- table_gdp_3_percent_of_us_v2%>%
+  mutate(rptdate = case_when(
+    right(table_gdp_3_percent_of_us_v2$date, 1) == 1 ~ paste(left(table_gdp_3_percent_of_us_v2$date,4),"03-31", sep="-"),
+    right(table_gdp_3_percent_of_us_v2$date, 1) == 2 ~ paste(left(table_gdp_3_percent_of_us_v2$date,4),"06-30", sep="-"),
+    right(table_gdp_3_percent_of_us_v2$date, 1) == 3 ~ paste(left(table_gdp_3_percent_of_us_v2$date,4),"09-30", sep="-"),
+    right(table_gdp_3_percent_of_us_v2$date, 1) == 4 ~ paste(left(table_gdp_3_percent_of_us_v2$date,4),"12-31", sep="-")
+  ))%>%
+  mutate(gdp_share = as.numeric(gdp_share))%>%
+  select(-date)
+
+table_gdp_3_percent_of_us_v2$rptdate <- as.Date(table_gdp_3_percent_of_us_v2$rptdate)
+
+##lÃ¤gg 0 till us as country
+table_gdp_3_percent_of_us_v2 <- table_gdp_3_percent_of_us_v2%>%
+  mutate(gdp_share = ifelse(state_long =="United States", 0, gdp_share))
+
+
+temp_table <- table_gdp_3_percent_of_us_v2 %>%
+  select(state_long, rptdate, gdp_share)
+
+#merge table 1 and table 3
+table_gdp_1_change_v2<-merge(x = table_gdp_1_change_v2, y = temp_table, by.x = c("state_long", "rptdate"), by.y = c("state_long", "rptdate"), all.x = TRUE)
+table_gdp_1_change_v2 <- arrange(table_gdp_1_change_v2, rptdate)
+
+#detta behÃ¶vs fÃ¶r att ha alla datum kvar fÃ¶r graf
+table_gdp_1_change2_v2 <- table_gdp_1_change_v2
+
+
+
+##test
+max_date <- max(table_gdp_1_change$rptdate)
+
+#decrease with those we got
+table_gdp_1_change2_v2 <- table_gdp_1_change2_v2 %>%
+  filter(rptdate > max_date)
+
+table_gdp_1_change <- rbind(table_gdp_1_change2, table_gdp_1_change2_v2)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #import table 4 years compared
@@ -616,6 +769,9 @@ temp_table <- data_employment%>%
 joint_table<-merge(x = joint_table, y = temp_table, by.x = c("state_long"), by.y = c("state_long"), all.x = TRUE)
 
 
+table_last_gdp_yoy  <- table_gdp_4_multiple_yr %>%
+  filter(state_short == "US")%>%
+  filter(rptdate == max(rptdate))
 
 
 
@@ -864,7 +1020,7 @@ box(title="US Labor Market",
                                 box(#collapsible = TRUE,
                                   radioButtons("gdp_type", "Select GDP input",
                                                c("GDP QoQ" = "gdp_qoq",
-                                                 "GDP YoY" = "gdp_yoy",
+                                                 #"GDP YoY" = "gdp_yoy", 
                                                  "GDP Share of Economy" = "gdp_share")),width=6),
                                 box(#collapsible = TRUE,
                                   
@@ -1242,7 +1398,7 @@ zmax=max_legend,
     fig <- plot_ly(data = df, x = ~rptdate, y = ~value, color = ~variable, symbol = ~variable,
                    colors = 'Purple', type = 'scatter', mode = 'lines',
                    
-                   text = ~paste('<br>',"Initial Claims: ", '<br>Continuing Claims:'))%>%
+                   text = ~paste(value))%>%
       layout(
         #title = "Employment",
         xaxis = list(title = "Date", gridcolor="grey"),
@@ -1256,7 +1412,7 @@ zmax=max_legend,
       hide_colorbar() %>%
       plotly::config(displayModeBar = F)%>%
       layout(annotations = 
-               list(x = 1, y = -0.1, text = "Source: US Department of Labor", 
+               list(x = 1, y = -0.1, text = "Source: US Bureau of Labor Statistics", 
                     showarrow = F, xref='paper', yref='paper', 
                     xanchor='right', yanchor='auto', xshift=0, yshift=0,
                     font=list(size=10, color="black")))
@@ -1600,8 +1756,8 @@ zmax=max_legend,
     })
     output$gdp_yoy <- renderValueBox({ 
       
-      temp_data <- table_gdp_1_change%>%
-        filter(rptdate == (input$range_gdp))%>%
+      temp_data <- table_last_gdp_yoy%>%
+        #filter(rptdate == (input$range_gdp))%>%
         filter(state_short == "US")
      #   mutate(civ_population = as.numeric(gsub(",","",civ_population,fixed=TRUE)))%>%
       #  mutate(participation = as.numeric(gsub(",","",participation,fixed=TRUE)))%>%
@@ -1719,12 +1875,13 @@ zmax=max_legend,
         ,color = "light-blue")   
     })
     
+
     output$dash_gdp_yoy <- renderValueBox({ 
-      temp_data <- joint_table%>%
+      temp_data <- table_last_gdp_yoy%>%
         # filter(rptdate == (input$range_labor))%>%
         filter(state_short == "US")
       total <- paste(round(temp_data$gdp_yoy,1),"%", sep="")
-      date_ <- temp_data$rptdate_gdp
+      date_ <- temp_data$rptdate
       
       valueBox(
         formatC(total, format="d", big.mark=',')
